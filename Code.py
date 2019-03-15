@@ -2,16 +2,19 @@
 
 import pandas as pd 
 import numpy as np 
-from sklearn.model_selection import cross_validate
+import sklearn.model_selection 
 from sklearn import preprocessing, metrics, svm, tree, ensemble
 
-
+#print(sklearn.__version__)
 df = pd.read_csv("bigml_59c28831336c6604c800002a.csv")
-print(df.head())
+#print(df.head())
 
-print(df.info())
+#print(df.info())
+
+
 # There are 4 object values that need to be manupplated or removed.
 # Phone Number does not make any difference to the target value that is CHURN, so drop it. 
+
 df = df.drop(['phone number'], axis=1 )
 print(df.info())
 
@@ -23,3 +26,31 @@ df['state'] = label_encode.fit_transform(df['state'])
 df['international plan'] = label_encode.fit_transform(df['international plan'])
 df['voice mail plan'] = label_encode.fit_transform(df['voice mail plan'])
 print(df.info())
+
+# It is the time to split the INDEPENDENT VARIABLES and the DEPENDENT VARIABLE
+
+df_Target = df.churn 
+df_Features = df.drop(['churn'], axis =1)
+
+X = df_Features.values
+Y = df_Target.values.astype(np.int)
+
+KF = sklearn.model_selection.StratifiedKFold( n_splits=10, shuffle=True)
+KF.get_n_splits(Y,X)
+print(KF)
+
+def folds(X, Y,Classifier, Kf):
+	y_pred = Y.copy()
+	for ii,jj in KF.split(X, Y):
+		X_train, X_test = X[ii], X[jj]
+		y_train = Y[ii]
+		clf = Classifier()
+		clf.fit(X_train,y_train)
+		y_pred[jj] = clf.predict(X_test)
+	return y_pred
+
+#folds(X, Y,ensemble.GradientBoostingClassifier, KF)
+
+print(metrics.accuracy_score(Y, folds(X, Y, ensemble.GradientBoostingClassifier, KF)))
+print(metrics.accuracy_score(Y, folds(X, Y, ensemble.RandomForestClassifier, KF)))
+print(metrics.accuracy_score(Y, folds(X, Y, svm.SVC, KF)))
